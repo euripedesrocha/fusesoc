@@ -12,6 +12,7 @@ from simplesat.repository import Repository
 from simplesat.request import Request
 
 from fusesoc.core import Core
+from fusesoc.template import Variables
 
 logger = logging.getLogger(__name__)
 
@@ -125,11 +126,12 @@ class CoreManager(object):
         self.config = config
         self._cores_root = []
         self.db = CoreDB()
+        self.template_vars = Variables()
 
     def load_core(self, file):
         if os.path.exists(file):
             try:
-                core = Core(file, self.config.cache_root, self.config.build_root)
+                core = Core(file, self.config.cache_root, self.config.build_root, self.template_vars)
                 self.db.add(core)
             except SyntaxError as e:
                 w = "Parse error. Ignoring file " + file + ": " + e.msg
@@ -188,6 +190,9 @@ class CoreManager(object):
         else:
             os.makedirs(work_root)
 
+        for f in self.config.template_var_files:
+            self.template_vars.add(f)
+
         logger.debug("Building EDA API")
         def merge_dict(d1, d2):
             for key, value in d2.items():
@@ -228,7 +233,8 @@ class CoreManager(object):
             if export_root:
                 files_root = os.path.join(export_root, core.sanitized_name)
                 dst_dir = os.path.join(export_root, core.sanitized_name)
-                core.export(dst_dir, _flags)
+                template_vars = self.template_vars.get(str(core.name))
+                core.export(dst_dir, _flags, template_vars)
             else:
                 files_root = core.files_root
 

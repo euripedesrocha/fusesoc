@@ -1,6 +1,9 @@
 import logging
 
 import sys
+
+from fusesoc.template import Variables
+
 if sys.version[0] == '2':
     import ConfigParser as configparser
 else:
@@ -12,13 +15,14 @@ logger = logging.getLogger(__name__)
 
 class Config(object):
 
-    def __init__(self, path=None, file=None):
+    def __init__(self, path=None, file=None, template_var_files=[]):
         self.build_root = None
         self.cache_root = None
         self.cores_root = []
         self.systems_root = None
         self.library_root = None
         self.libraries = {}
+        self.template_var_files = template_var_files
 
         config = configparser.SafeConfigParser()
         if file is None:

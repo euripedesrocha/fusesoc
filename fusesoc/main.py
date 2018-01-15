@@ -359,6 +359,7 @@ def parse_args():
     # Global options
     parser.add_argument('--cores-root', help='Add additional directories containing cores', action='append')
     parser.add_argument('--config', help='Specify the config file to use', type=argparse.FileType('r'))
+    parser.add_argument('--template-vars', help='Template variable file', action='append')
     parser.add_argument('--monochrome', help='Don\'t use color for messages', action='store_true')
     parser.add_argument('--verbose', help='More info messages', action='store_true')
 
@@ -439,7 +440,10 @@ def main():
 
     if hasattr(args, 'func'):
         init_logging(args.verbose, args.monochrome)
-        config = Config(file=args.config)
+
+        if args.template_vars is None:
+            args.template_vars = []
+        config = Config(file=args.config, template_var_files=args.template_vars)
         cm = init_coremanager(config, args.cores_root)
 
         # Run the function

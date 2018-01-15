@@ -53,6 +53,7 @@ Example: data/mem_init_file.bin[copyto=out/boot.bin]
     file_type = ""
     is_include_file = False
     logical_name = ""
+    template_engine = ""
     def __init__(self, s):
         self.is_include_file = False
         if s[-1:] == ']':
@@ -68,7 +69,7 @@ Example: data/mem_init_file.bin[copyto=out/boot.bin]
                     if _tmp[0] == 'file_type' and _tmp[1] not in self.FILE_TYPES:
                         _s = "Unknown file type '{}'. Allowed file types are {}"
                         raise SyntaxError(_s.format(_tmp[1], ', '.join(self.FILE_TYPES)))
-                    if _tmp[0] in ['copyto', 'file_type', 'logical_name']:
+                    if _tmp[0] in ['copyto', 'file_type', 'logical_name', 'template_engine']:
                         setattr(self, _tmp[0], _tmp[1])
                 else:
                     raise SyntaxError("Unexpected argument '"+_arg+"'")
@@ -299,12 +300,13 @@ class FileSetSection(Section):
     def __init__(self, items=None):
         super(FileSetSection, self).__init__()
 
-        self._add_member('files'          , FileList, "List of files in fileset")
-        self._add_member('file_type'      , str     , "Default file type of the files in fileset")
-        self._add_member('is_include_file', str     , "Specify all files in fileset as include files")
-        self._add_member('logical_name'   , str     , "Default logical_name (e.g. library) of the files in fileset")
-        self._add_member('scope'          , str     , "Visibility of fileset (private/public). Private filesets are only visible when this core is the top-level. Public filesets are visible also for cores that depend on this core. Default is public")
-        self._add_member('usage'          , StringList, "List of tags describing when this fileset should be used. Can be general such as sim or synth, or tool-specific such as quartus, verilator, icarus. Defaults to 'sim synth'.")
+        self._add_member('files'           , FileList, "List of files in fileset")
+        self._add_member('file_type'       , str     , "Default file type of the files in fileset")
+        self._add_member('is_include_file' , str     , "Specify all files in fileset as include files")
+        self._add_member('logical_name'    , str     , "Default logical_name (e.g. library) of the files in fileset")
+        self._add_member('template_engine' , str     , "Files are templates to be processed with given engine (default=\"\")")
+        self._add_member('scope'           , str     , "Visibility of fileset (private/public). Private filesets are only visible when this core is the top-level. Public filesets are visible also for cores that depend on this core. Default is public")
+        self._add_member('usage'           , StringList, "List of tags describing when this fileset should be used. Can be general such as sim or synth, or tool-specific such as quartus, verilator, icarus. Defaults to 'sim synth'.")
         if items:
             self.load_dict(items)
             if not self.scope:
@@ -318,6 +320,8 @@ class FileSetSection(Section):
                     f.is_include_file = True
                 if not f.logical_name:
                     f.logical_name = self.logical_name
+                if not f.template_engine:
+                    f.template_engine = self.template_engine
             self.export_files = self.files
 
 

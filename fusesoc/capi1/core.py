@@ -6,6 +6,7 @@ import shutil
 
 from ipyxact.ipyxact import Component
 from fusesoc import utils
+from fusesoc.template import get_engine
 from fusesoc.vlnv import Vlnv
 from fusesoc.capi1 import section
 from fusesoc.capi1.fusesocconfigparser import FusesocConfigParser
@@ -40,7 +41,7 @@ class FileSet(object):
         return s
 
 class Core:
-    def __init__(self, core_file, cache_root, build_root):
+    def __init__(self, core_file, cache_root, build_root, template_vars = None):
         basename = os.path.basename(core_file)
         self.depend = []
         self.simulators = []
@@ -90,6 +91,8 @@ class Core:
             self.name = Vlnv(basename.split('.core')[0])
 
         self.sanitized_name = self.name.sanitized_name
+
+        # TODO: self.template_vars.add
 
         self.depend     = self.main.depend
         self.simulators = self.main.simulators
@@ -276,12 +279,12 @@ class Core:
         if self.provider:
             self.provider.fetch()
 
-    def export(self, dst_dir, flags={}):
+    def export(self, dst_dir, flags={}, template_vars={}):
         if os.path.exists(dst_dir):
             shutil.rmtree(dst_dir)
 
-
-        src_files = [f.name for f in self.get_files(flags)]
+        # Default is to copy files
+        src_files = [f.name for f in self.get_files(flags) if (f.template_engine == "")]
         if self.vpi and flags['tool'] in ['icarus', 'modelsim', 'rivierapro']:
             src_files += [f.name for f in self.vpi.src_files + self.vpi.include_files]
         for section in self.get_scripts(flags).values():
@@ -306,6 +309,17 @@ class Core:
                 else:
                     raise RuntimeError('Cannot find %s in :\n\t%s\n\t%s'
                                   % (f, self.files_root, self.core_root))
+
+        # Run template engine for templates
+        template_files = [f for f in self.get_files(flags) if (f.template_engine != "")]
+        for f in template_files:
+            engine = get_engine(f.template_engine)
+            if os.path.exists(os.path.join(self.core_root, f.name)):
+                engine.process(template_vars, os.path.join(self.core_root, f.name),
+                                    os.path.join(dst_dir, f.name))
+            elif os.path.exists(os.path.join(self.files_root, f.name)):
+                engine.process(template_vars, os.path.join(self.files_root, f.name),
+                                    os.path.join(dst_dir, f.name))
 
     def _get_flow(self, flags):
         flow = None
