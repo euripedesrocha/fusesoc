@@ -68,6 +68,14 @@ class Vivado(EdaTool):
         self.render_template('vivado-run.tcl.j2',
                              self.name+"_run.tcl")
 
+        template_vars = {
+            'bitstream_name' : self.name+'.bit'
+            'hw_device'      : self.tool_options['hw_device'],
+        }
+        self.render_template('vivado-program.tcl.j2',
+                             self.name+"_pgm.tcl",
+                             template_vars)
+
     def render_template(self, template_file, target_file, template_vars = {}):
         template = self.jinja_env.get_template(os.path.join('vivado', template_file))
         file_path = os.path.join(self.work_root, target_file)
@@ -110,18 +118,6 @@ class Vivado(EdaTool):
     """
     def run(self, remaining):
         tcl_file_name = self.name+"_pgm.tcl"
-        self._write_program_tcl_file(tcl_file_name)
         utils.Launcher('vivado', ['-mode', 'batch', '-source', tcl_file_name ],
                        cwd = self.work_root,
                        errormsg = "Failed to program the FPGA").run()
-
-    """ Write the programming TCL file """
-    def _write_program_tcl_file(self, program_tcl_filename):
-        template_vars = {}
-        template_vars['bitstream_name'] = self.name+'.bit'
-        template_vars['hw_device'] = self.tool_options['hw_device']
-
-        template = self.jinja_env.get_template('vivado/vivado-program.tcl.j2')
-        tcl_file_path = os.path.join(self.work_root, program_tcl_filename)
-        with open(tcl_file_path, 'w') as program_tcl_file:
-            program_tcl_file.write(template.render(template_vars))
