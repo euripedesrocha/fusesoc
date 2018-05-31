@@ -32,6 +32,9 @@ class File(object):
             self.name = tree
             self.is_include_file = False #"FIXME"
 
+class Dict(dict):
+    pass
+
 class String(str):
     def parse(self, flags):
         _flags = []
@@ -280,6 +283,15 @@ class Core:
             src_files += fs.files
         return src_files
 
+    def get_generators(self, flags):
+        self._debug("Getting generators for flags {}".format(str(flags)))
+        generators = {}
+        for k,v in self.generators.items():
+            generators[k] = v
+            generators[k].root = self.files_root
+            self._debug(" Found generator " + k)
+        return generators
+
     def get_parameters(self, flags={}):
         self._debug("Getting parameters for flags '{}'".format(str(flags)))
         target = self._get_target(flags)
@@ -310,6 +322,24 @@ class Core:
             s = "{} : Target '{}' has no toplevel"
             raise SyntaxError(s.format(self.name, target.name))
 
+    def get_ttptttg(self, flags):
+        self._debug("Getting ttptttg for flags {}".format(str(flags)))
+        target = self._get_target(flags)
+        ttptttg = []
+
+        if not target:
+            return ttptttg
+
+        _ttptttg = self._parse_list(flags, target.generate)
+        if _ttptttg:
+            self._debug(" Matched generator instances {}".format(_ttptttg))
+        for gen in _ttptttg:
+            if not gen in self.generate:
+                raise SyntaxError("Generator instance '{}', requested by target '{}', was not found".format(gen, target.name))
+            ttptttg.append((str(self.generate[gen].generator),
+                            dict(self.generate[gen].parameters)))
+        return ttptttg
+        
     def get_work_root(self, flags):
         _flags = flags.copy()
         _flags['is_toplevel'] = True
@@ -444,6 +474,8 @@ Root:
     CAPI=2      : String
   dicts:
     filesets   : Fileset
+    generate   : Generate
+    generators : Generators
     scripts    : Script
     targets    : Target
     parameters : Parameter
@@ -457,6 +489,15 @@ Fileset:
     files      : File
     depend     : String
 
+Generate:
+  members:
+    generator  : String
+    parameters : Dict
+
+Generators:
+  members:
+    command : String
+
 Target:
   members:
     default_tool : String
@@ -466,6 +507,7 @@ Target:
   lists:
     filesets   : String
     flags      : String #FIXME
+    generate   : String
     parameters : String
     vpi        : String
 

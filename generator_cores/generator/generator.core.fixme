@@ -1,0 +1,8 @@
+CAPI=2:
+
+name : ::generator:0
+
+generators:
+  command_runner:
+    command: python command_runner.py
+    description : Runs a custom command defined in the 'command' parameter. $GENERATOR_ROOT and $CORE_ROOT are available as environment variables. 'output_files' describe a list of new files with metadata (e.g. [generated_file.v : {file_type : verilogSource, is_include_file : true}]) that are expected to have been generated

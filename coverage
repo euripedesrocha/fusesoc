@@ -1,0 +1,1 @@
+coverage run --source edalize,fusesoc -m py.test && coverage html
