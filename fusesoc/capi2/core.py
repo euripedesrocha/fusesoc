@@ -336,7 +336,7 @@ class Core:
         for gen in _ttptttg:
             if not gen in self.generate:
                 raise SyntaxError("Generator instance '{}', requested by target '{}', was not found".format(gen, target.name))
-            ttptttg.append((str(self.generate[gen].generator),
+            ttptttg.append((gen, str(self.generate[gen].generator),
                             dict(self.generate[gen].parameters)))
         return ttptttg
         

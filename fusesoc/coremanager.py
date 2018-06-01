@@ -240,26 +240,6 @@ class CoreManager(object):
 
             rel_root = os.path.relpath(files_root, work_root)
 
-            #Extract generators if defined in CAPI
-            if hasattr(core, 'get_generators'):
-                generators.update(core.get_generators(_flags))
-
-            if hasattr(core, 'get_ttptttg'):
-                for _name, _params in core.get_ttptttg(_flags):
-                    if not _name in generators:
-                        raise RuntimeError("Could not find generator '{}' requested by {}".format(_name, core.name))
-                    (gen_work_root, gen_output) = generate(generators[_name],
-                                                           _params)
-                    _files = gen_output['files']
-                    for f in _files:
-                        _f = f
-                        if export_root:
-                            export(gen_work_root, dst_dir, f['name'])
-                            _f['name'] = os.path.join(rel_root, f['name'])
-                        else:
-                            _f['name'] = os.path.join(gen_work_root, f['name'])
-                        files.append(_f)
-
             #Extract parameters
             merge_dict(parameters, core.get_parameters(_flags))
 
@@ -292,6 +272,24 @@ class CoreManager(object):
                             'include_dirs' : [os.path.join(rel_root, i) for i in _vpi['include_dirs']],
                             'libs'         : _vpi['libs']})
 
+            #Extract generators if defined in CAPI
+            if hasattr(core, 'get_generators'):
+                generators.update(core.get_generators(_flags))
+
+            #Run generators
+            if hasattr(core, 'get_ttptttg'):
+                for _instance, _generator, _params in core.get_ttptttg(_flags):
+                    if not _generator in generators:
+                        raise RuntimeError("Could not find generator '{}' requested by {}".format(_generator, core.name))
+                    gen_output = generate(generators[_generator],
+                                          _instance,
+                                          _params,
+                                          core.files_root,
+                                          files_root,
+                                          work_root)
+                    files += gen_output['files']
+                    merge_dict(parameters, gen_output.get('parameters', {}))
+
         top_core = cores[-1]
         return {
             'version'      : '0.2.0',
@@ -304,27 +302,25 @@ class CoreManager(object):
             'vpi'          : vpi,
         }
 
-def generate(generator, parameters):
-    import tempfile
+def generate(generator, name, parameters, core_root, files_root, work_root):
     import yaml
     from fusesoc.utils import Launcher
-    #work_root = tempfile.mkdtemp()
-    work_root = '/tmp/gentest'
-    import os
-    if not os.path.exists(work_root):
-        os.makedirs(work_root)
-    generator_input_file  = os.path.join(work_root, 'generator_input.yml')
-    generator_output_file = os.path.join(work_root, 'generator_output.yml')
+
+    generator_input_file  = os.path.join(files_root, name+'_input.yml')
+    generator_output_file = os.path.join(files_root, name+'_output.yml')
 
     generator_input = {
         'edalize_file' : generator_output_file,
+        'core_root'    : core_root,
+        'files_root'   : files_root,
+        'work_root'    : work_root,
         'parameters'   : parameters,
-        #'edalize_version'
+        #'generator_version'
     }
 
     with open(generator_input_file, 'w') as f:
         f.write(yaml.dump(generator_input))
     Launcher(os.path.join(generator.root, generator.command),
              [generator_input_file],
-             cwd=work_root).run()
-    return (work_root, yaml.load(open(generator_output_file)))
+             cwd=files_root).run()
+    return yaml.load(open(generator_output_file))

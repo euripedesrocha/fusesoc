@@ -1,0 +1,36 @@
+#!/usr/bin/env python
+import shutil
+import subprocess
+import sys
+import yaml
+
+with open(sys.argv[1]) as f:
+    import os
+    data = yaml.load(f)
+
+    config     = data['parameters']
+    core_root  = data['core_root']
+    files_root = data['files_root']
+    work_root  = data['work_root']
+
+    cwd = core_root if config.get('cwd') == 'core_root' else files_root
+
+    rc = subprocess.call(config['command'].split(), cwd=cwd)
+
+    if not cwd == files_root:
+        files = [f['name'] for f in config['output']['files']]
+        
+        for f in files:
+            d = os.path.dirname(f)
+            if not os.path.exists(os.path.join(files_root, d)):
+                os.makedirs(os.path.join(files_root, d))
+            shutil.copy2(os.path.join(core_root, f),
+                         os.path.join(files_root,f))
+    for p in config['output']['parameters'].values():
+        if p.get('datatype') == 'file' and p.get('default'):
+            p['default'] = os.path.join(os.path.relpath(files_root, work_root), p['default'])
+            
+    with open(data['edalize_file'], 'w') as of:
+        of.write(yaml.dump(config['output']))
+        
+exit(rc)

@@ -1,3 +1,0 @@
-core_root : /home/olof/projects/fusesoc/fusesoc/generator_cores/caller
-generator_root : /home/olof/projects/fusesoc/fusesoc/generator_cores/generator
-output_file : caller_0_version.yml
