@@ -26,13 +26,27 @@ parameters:
     default   : true
     paramtype : vlogparam
 
+  int0:
+    datatype  : int
+    default   : 0
+    paramtype : vlogparam
+
+  emptystr:
+    datatype  : str
+    default   : ""
+    paramtype : vlogparam
+
+  condparamtype:
+    datatype : str
+    paramtype : "tool_icarus? (plusarg) !tool_icarus? (vlogparam)"
+
 targets:
   default:
     parameters: [param1]
   noparameters: {}
   nonexistant:
     parameters: [idontexist]
-  
+
   multiparameters:
     parameters : [param1, param2]
 
@@ -45,3 +59,8 @@ targets:
     parameters:
       - "tool_icarus? (param1)"
       - "!tool_icarus? (param2)"
+      - condparamtype
+
+  empty:
+    parameters:
+      [int0, emptystr]

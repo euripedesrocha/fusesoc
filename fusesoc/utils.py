@@ -3,46 +3,60 @@ import logging
 import sys
 import importlib
 
-if sys.version[0] == '2':
+import yaml
+
+try:
+    from yaml import CSafeLoader as YamlLoader, CSafeDumper as YamlDumper
+except ImportError:
+    from yaml import SafeLoader as YamlLoader, SafeDumper as YamlDumper
+
+if sys.version[0] == "2":
     FileNotFoundError = OSError
 
 logger = logging.getLogger(__name__)
 
+
 class Launcher:
     def __init__(self, cmd, args=[], cwd=None):
-        self.cmd      = cmd
-        self.args     = args
-        self.cwd      = cwd
+        self.cmd = cmd
+        self.args = args
+        self.cwd = cwd
 
     def run(self):
         logger.debug(self.cwd)
-        logger.debug('    ' + str(self))
+        logger.debug("    " + str(self))
         try:
-            subprocess.check_call([self.cmd] + self.args,
-                                  cwd = self.cwd,
-                                  stdin=subprocess.PIPE),
+            subprocess.check_call(
+                [self.cmd] + self.args, cwd=self.cwd, stdin=subprocess.PIPE
+            ),
         except FileNotFoundError:
-            raise RuntimeError("Command '" + self.cmd + "' not found. Make sure it is in $PATH")
+            raise RuntimeError(
+                "Command '" + self.cmd + "' not found. Make sure it is in $PATH"
+            )
         except subprocess.CalledProcessError:
             self.errormsg = '"{}" exited with an error code. See stderr for details.'
             raise RuntimeError(self.errormsg.format(str(self)))
 
     def __str__(self):
-        return ' '.join([self.cmd] + self.args)
+        return " ".join([self.cmd] + self.args)
+
 
 def is_mingw():
     if sys.platform == "msys":
         return True
-    return (sys.platform == "win32" and "GCC" in sys.version)
+    return sys.platform == "win32" and "GCC" in sys.version
+
 
 def cygpath(win_path):
     path = subprocess.check_output(["cygpath", "-u", win_path])
-    return path.decode('ascii').strip()
+    return path.decode("ascii").strip()
+
 
 import os
 
+
 def unique_dirs(file_list):
-    return list(set([os.path.dirname(f.name) for f in file_list]))
+    return list({os.path.dirname(f.name) for f in file_list})
 
 
 # With help from:
@@ -56,22 +70,21 @@ RESET_SEQ = "\033[0m"
 COLOR_SEQ = "\033[1;%dm"
 
 COLOR_MAP = {
-    'CRITICAL': RED,
-    'ERROR': RED,
-    'WARNING': YELLOW,
-    'INFO': WHITE,
-    'DEBUG': WHITE,
-    }
+    "CRITICAL": RED,
+    "ERROR": RED,
+    "WARNING": YELLOW,
+    "INFO": WHITE,
+    "DEBUG": WHITE,
+}
 
 
 class ColoredFormatter(logging.Formatter):
-
     def __init__(self, msg, monochrome):
-        super(ColoredFormatter, self).__init__(msg)
+        super().__init__(msg)
         self.monochrome = monochrome
 
     def format(self, record):
-        uncolored = super(ColoredFormatter, self).format(record)
+        uncolored = super().format(record)
         levelname = record.levelname
         if not self.monochrome and (levelname in COLOR_MAP):
             color_seq = COLOR_SEQ % (30 + COLOR_MAP[levelname])
@@ -82,13 +95,12 @@ class ColoredFormatter(logging.Formatter):
 
 
 def setup_logging(level, monchrome=False, log_file=None):
-    '''
+    """
     Utility function for setting up logging.
-    '''
+    """
     # Logging to file
     if log_file:
-        logging.basicConfig(filename=log_file, filemode='w',
-                            level=logging.DEBUG)
+        logging.basicConfig(filename=log_file, filemode="w", level=logging.DEBUG)
 
     # Pretty color terminal logging
     ch = logging.StreamHandler()
@@ -96,7 +108,11 @@ def setup_logging(level, monchrome=False, log_file=None):
     formatter = ColoredFormatter("%(levelname)s: %(message)s", monchrome)
     ch.setFormatter(formatter)
     # Which packages do we want to log from.
-    packages = ('__main__', 'fusesoc',)
+    packages = (
+        "__main__",
+        "fusesoc",
+        "edalize",
+    )
     for package in packages:
         logger = logging.getLogger(package)
         logger.addHandler(ch)
@@ -107,4 +123,30 @@ def setup_logging(level, monchrome=False, log_file=None):
         logger = logging.getLogger(package)
         logger.addHandler(ch)
         logger.setLevel(logging.WARNING)
-    logger.debug('Setup logging at level {}.'.format(level))
+    logger.debug("Setup logging at level {}.".format(level))
+
+
+def yaml_fwrite(filepath, content, preamble=""):
+    with open(filepath, "w") as f:
+        f.write(preamble)
+        f.write(yaml.dump(content, Dumper=YamlDumper))
+
+
+def yaml_fread(filepath):
+    with open(filepath) as f:
+        return yaml.load(f, Loader=YamlLoader)
+
+
+def yaml_read(data):
+    return yaml.load(data, Loader=YamlLoader)
+
+
+def merge_dict(d1, d2):
+    for key, value in d2.items():
+        if isinstance(value, dict):
+            d1[key] = merge_dict(d1.get(key, {}), value)
+        elif isinstance(value, list):
+            d1[key] = d1.get(key, []) + value
+        else:
+            d1[key] = value
+    return d1
